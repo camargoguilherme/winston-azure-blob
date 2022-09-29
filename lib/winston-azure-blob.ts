@@ -18,7 +18,8 @@ const MAX_APPEND_BLOB_BLOCK_SIZE = 4 * 1024 * 1024;
  */
 type Account =
     | { name: string; key: string }
-    | { host: string; sasToken: string };
+    | { host: string; sasToken: string }
+    | { host: string; name: string; key: string };
 
 /**
  * File extensions for the log file. More can be added
@@ -158,6 +159,18 @@ export class WinstonAzureBlob extends Transport implements IWinstonAzureBlob {
     }
 
     static createAzBlobClient(account_info: Account) {
+        if ("key" in account_info && "host" in account_info) {
+            const sharedKeyCredential = new StorageSharedKeyCredential(
+                account_info.name,
+                account_info.key
+            );
+
+            return new BlobServiceClient(
+                account_info.host,
+                sharedKeyCredential
+            );
+        }
+        
         if ("key" in account_info) {
             const sharedKeyCredential = new StorageSharedKeyCredential(
                 account_info.name,
@@ -187,6 +200,17 @@ export class WinstonAzureBlob extends Transport implements IWinstonAzureBlob {
     }
 
     private static isValidAccountOpts(account_info: Account) {
+         if ("key" in account_info && "host" in account_info) {
+            if (
+                typeof account_info.host !== "string" ||
+                typeof account_info.key !== "string" ||
+                typeof account_info.name !== "string"
+            ) {
+                throw new Error(
+                    `Azure account host/key/name must be string values, received host:${typeof account_info.host}, key:${typeof account_info.key}, name:${typeof account_info.name} `
+                );
+            }
+        }
         if ("key" in account_info) {
             if (
                 typeof account_info.key !== "string" ||
